@@ -10,11 +10,13 @@ import { AlertCircleIcon, RefreshCwIcon } from "lucide-react"
 import type { Anime, AnimeSearch } from "@lightweight-clients/jikan-api-lightweight-client/dist/raw-types"
 import { cn } from "@/lib/utils"
 
+import { type Anime as tkAnime } from "@tutkli/jikan-ts"
+
 type AnimeGridVariant = "full" | "minimalist" | "featured"
 
 type AnimeGridProps = {
   // Data props
-  animes?: Anime[]
+  animes?: Anime[] | tkAnime[]
   fetchFunction?: (page?: number) => Promise<AnimeSearch>
 
   // Layout props

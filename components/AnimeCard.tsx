@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { Button } from "./ui/button"
 
-type AnimeCardProps = {
+export type AnimeCardProps = {
   anime: Anime
   variant?: "default" | "compact" | "minimal" | "featured"
   showScore?: boolean

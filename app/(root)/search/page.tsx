@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState, Suspense, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { Navbar } from "@/components/Navbar"
-import AnimeGrid from "@/components/AnimeGrid"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { getAnimeSearch } from "@lightweight-clients/jikan-api-lightweight-client"
 import type { AnimeSearch } from "@lightweight-clients/jikan-api-lightweight-client/dist/raw-types"
+import { Navbar } from "@/components/Navbar"
+import AnimeGrid from "@/components/AnimeGrid"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SearchIcon, FilterIcon, XIcon, SlidersIcon } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import SharedHero from "@/components/SharedHero"
 
 const genres = [
   { id: 1, name: "Action" },
@@ -46,31 +48,6 @@ function SearchContent() {
   })
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
-  const fetchSearchResults = async (page = 1): Promise<AnimeSearch> => {
-    if (!query.trim()) {
-      return { data: [], pagination: {} } as AnimeSearch
-    }
-
-    const searchParams: any = {
-      q: query,
-      page,
-      limit: 25,
-      order_by: filters.orderBy,
-      sort: filters.sort,
-    }
-
-    if (filters.type !== "all") searchParams.type = filters.type
-    if (filters.status !== "all") searchParams.status = filters.status
-    if (filters.rating !== "all") searchParams.rating = filters.rating
-    if (filters.genres.length > 0) searchParams.genres = filters.genres.join(",")
-    if (filters.minScore) searchParams.min_score = Number.parseFloat(filters.minScore)
-    if (filters.maxScore) searchParams.max_score = Number.parseFloat(filters.maxScore)
-    if (filters.startYear) searchParams.start_date = `${filters.startYear}-01-01`
-    if (filters.endYear) searchParams.end_date = `${filters.endYear}-12-31`
-
-    return await getAnimeSearch(searchParams)
-  }
-
   const updateURL = () => {
     const params = new URLSearchParams()
     if (query) params.set("q", query)
@@ -84,7 +61,6 @@ function SearchContent() {
     if (filters.maxScore) params.set("max_score", filters.maxScore)
     if (filters.startYear) params.set("start_year", filters.startYear)
     if (filters.endYear) params.set("end_year", filters.endYear)
-
     router.push(`/search?${params.toString()}`)
   }
 
@@ -99,7 +75,9 @@ function SearchContent() {
   const handleGenreToggle = (genreId: string) => {
     setFilters((prev) => ({
       ...prev,
-      genres: prev.genres.includes(genreId) ? prev.genres.filter((id) => id !== genreId) : [...prev.genres, genreId],
+      genres: prev.genres.includes(genreId)
+        ? prev.genres.filter((id) => id !== genreId)
+        : [...prev.genres, genreId],
     }))
   }
 
@@ -119,21 +97,62 @@ function SearchContent() {
   }
 
   const activeFiltersCount = Object.values(filters).filter((value) =>
-    Array.isArray(value) ? value.length > 0 : value !== "all" && value !== "score" && value !== "desc" && value !== "",
+    Array.isArray(value) ? value.length > 0 : value !== "all" && value !== "score" && value !== "desc" && value !== ""
   ).length
 
+  const queryKey = useMemo(() => ["anime-search", { query, ...filters }], [query, filters])
+
+  type AnimeSearchResponse = {
+    pagination: {
+      current_page: number
+      has_next_page: boolean
+    }
+    data: AnimeSearch[]
+  }
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isLoading,
+  } = useInfiniteQuery<AnimeSearchResponse>({
+    queryKey,
+    enabled: query.trim().length > 0,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam = 1 }) => {
+      const params: any = {
+        q: query,
+        page: pageParam,
+        limit: 25,
+        order_by: filters.orderBy,
+        sort: filters.sort,
+      }
+
+      if (filters.type !== "all") params.type = filters.type
+      if (filters.status !== "all") params.status = filters.status
+      if (filters.rating !== "all") params.rating = filters.rating
+      if (filters.genres.length > 0) params.genres = filters.genres.join(",")
+      if (filters.minScore) params.min_score = Number(filters.minScore)
+      if (filters.maxScore) params.max_score = Number(filters.maxScore)
+      if (filters.startYear) params.start_date = `${filters.startYear}-01-01`
+      if (filters.endYear) params.end_date = `${filters.endYear}-12-31`
+
+      return getAnimeSearch(params)
+    },
+    getNextPageParam: (lastPage) => {
+      const current = lastPage?.pagination?.current_page
+      const hasNext = lastPage?.pagination?.has_next_page
+      return hasNext ? current + 1 : undefined
+    },
+  })
+
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-
+    <div className="min-h-screen">
+      <SharedHero title="Search smAnime" description="Discover something new"  />
+      {/* ... filter UI unchanged ... */}
       <div className="container mx-auto px-4 pt-24 pb-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Search Anime</h1>
-          <p className="text-muted-foreground">Discover anime with advanced search and filtering options</p>
-        </div>
-
-        {/* Search Bar */}
+        {/* ... header and filters ... */}
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex gap-4 items-end">
@@ -328,15 +347,19 @@ function SearchContent() {
           </CardContent>
         </Card>
 
-        {/* Results */}
+
         {query.trim() ? (
           <AnimeGrid
-            fetchFunction={fetchSearchResults}
             variant="full"
             cardVariant="compact"
             showLoadMore={true}
             showStats={true}
             columns={{ default: 2, sm: 3, md: 4, lg: 5, xl: 6 }}
+            // isLoading={isLoading}
+            // isFetching={isFetching}
+            animes={data?.pages.flatMap((page) => page.data) ?? []}
+            onLoadMore={fetchNextPage}
+            // hasNextPage={hasNextPage}
           />
         ) : (
           <div className="text-center py-12">
@@ -357,3 +380,8 @@ export default function SearchPage() {
     </Suspense>
   )
 }
+
+
+
+
+

@@ -66,7 +66,7 @@ const Hero = () => {
         </div>
       ) : (
         <Image
-          src="/placeholder.svg?height=1080&width=1920"
+          src="/images/tanjiro.png"
           fill
           alt="Anime Background"
           className="object-cover object-center"
@@ -134,27 +134,7 @@ const Hero = () => {
             Trending Now
           </h2>
 
-          {/* {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Card key={index} className="bg-black/40 border-white/20">
-                  <Skeleton className="aspect-[3/4] w-full" />
-                  <CardContent className="p-3">
-                    <Skeleton className="h-4 w-full mb-2" />
-                    <Skeleton className="h-3 w-2/3" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
-              {featuredAnimes.slice(0, 5).map((anime, index) => (
-                <div key={anime.mal_id} className="transform hover:scale-105 transition-transform duration-300">
-                  <AnimeCard anime={anime} variant="compact" />
-                </div>
-              ))}
-            </div>
-          )} */}
+
         </div>
 
         {/* CTA Buttons */}
